@@ -1,0 +1,72 @@
+[
+  {
+    "id": "s01",
+    "task": "explanation",
+    "category": "general",
+    "difficulty": "easy",
+    "prompt": "Explain the difference between a list and a tuple in Python. When would you use one over the other?"
+  },
+  {
+    "id": "s02",
+    "task": "code_generation",
+    "category": "general",
+    "difficulty": "easy",
+    "prompt": "Write a Python function that takes a list of integers and returns a new list with duplicates removed while preserving the original order. Include type hints."
+  },
+  {
+    "id": "s03",
+    "task": "explanation",
+    "category": "adas",
+    "difficulty": "easy",
+    "prompt": "Explain the difference between a forward collision warning (FCW) and automatic emergency braking (AEB) system. What sensor inputs does each typically rely on?"
+  },
+  {
+    "id": "s04",
+    "task": "debugging",
+    "category": "general",
+    "difficulty": "medium",
+    "prompt": "Find and fix all bugs in this Python code:\n\ndef binary_search(arr, target):\n    left, right = 0, len(arr)\n    while left < right:\n        mid = (left + right) / 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid\n        else:\n            right = mid\n    return -1\n\nprint(binary_search([1, 3, 5, 7, 9], 5))"
+  },
+  {
+    "id": "s05",
+    "task": "code_generation",
+    "category": "adas",
+    "difficulty": "medium",
+    "prompt": "Write a Python function that computes the Euclidean distance between two 3D LiDAR points and uses it to cluster points within a given radius. Input is a list of (x, y, z) tuples and a radius threshold. Return a list of clusters, each cluster being a list of point indices."
+  },
+  {
+    "id": "s06",
+    "task": "code_review",
+    "category": "general",
+    "difficulty": "medium",
+    "prompt": "Review this Python code and identify issues with correctness, error handling, and performance:\n\ndef read_sensor_data(file_path):\n    data = []\n    f = open(file_path)\n    lines = f.readlines()\n    for i in range(0, len(lines)):\n        parts = lines[i].split(',')\n        data.append({'timestamp': parts[0], 'value': float(parts[1])})\n    return data"
+  },
+  {
+    "id": "s07",
+    "task": "code_generation",
+    "category": "general",
+    "difficulty": "medium",
+    "prompt": "Write a Python context manager class that acquires and releases a file lock. It should handle the case where the lock is already held by another process and retry up to 3 times with a 1 second wait between retries."
+  },
+  {
+    "id": "s08",
+    "task": "debugging",
+    "category": "adas",
+    "difficulty": "hard",
+    "prompt": "This function is supposed to project 3D LiDAR points onto a 2D camera image plane but produces incorrect results. Find and fix the bug:\n\ndef project_lidar_to_image(points_3d, K, R, t):\n    points_cam = R @ points_3d.T + t\n    points_img = K @ points_cam\n    u = points_img[0] / points_img[2]\n    v = points_img[1] / points_img[2]\n    mask = points_3d[:, 2] > 0\n    return u[mask], v[mask]"
+  },
+  {
+    "id": "s09",
+    "task": "code_generation",
+    "category": "adas",
+    "difficulty": "hard",
+    "prompt": "Write a Python class that implements a simple FIFO buffer for sensor data fusion. The buffer should hold timestamped messages from multiple sensors (camera, LiDAR, radar), support inserting messages out of order, and return all messages within a given time window sorted by timestamp."
+  },
+  {
+    "id": "s10",
+    "task": "explanation",
+    "category": "adas",
+    "difficulty": "hard",
+    "prompt": "Explain the concept of time-to-collision (TTC) estimation in ADAS. How is it computed from camera and radar data? What are the failure modes and how do production systems mitigate them?"
+  }
+]
