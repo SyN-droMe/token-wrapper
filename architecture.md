@@ -9,66 +9,34 @@ response, and exposes summary reports.
 
 ```mermaid
 flowchart LR
-    APP["Application Code"]
-    PROXY["_MessagesProxy\n(interceptor)"]
-    CACHE_CHECK{{"Local\nResponse\nCache?"}}
-    PIPE["ReductionPipeline"]
-    API["LLM API\n(Anthropic / Bedrock)"]
-    LOG["UsageLogger"]
-    RPT["UsageReporter"]
-
-    APP -->|"messages.create(...)"| PROXY
-    PROXY --> CACHE_CHECK
-    CACHE_CHECK -->|"hit"| APP
-    CACHE_CHECK -->|"miss"| PIPE
-    PIPE -->|"optimized request"| API
-    API -->|"response + usage"| LOG
-    LOG --> RPT
-    LOG -->|"response"| APP
-
-    style CACHE_CHECK fill:#f9f,stroke:#333
-    style PIPE fill:#bbf,stroke:#333
+    APP[Application Code] -->|messages.create| PROXY[_MessagesProxy]
+    PROXY --> CACHE_CHECK{Response\nCached?}
+    CACHE_CHECK -->|hit| APP
+    CACHE_CHECK -->|miss| PIPE[ReductionPipeline]
+    PIPE -->|optimized request| API[LLM API]
+    API -->|response + usage| LOG[UsageLogger]
+    LOG --> RPT[UsageReporter]
+    LOG -->|response| APP
 ```
 
 ### Reduction Pipeline Detail
 
 ```mermaid
 flowchart TD
-    IN["Raw Messages + System Prompt"]
-    COMP{"Code\ndetected?"}
-    COMPRESS["Prompt Compression\n(whitespace + verbose phrases)"]
-    SKIP["Skip Compression"]
-    TRIM{"Context\n> 6000 tok?"}
-    SUMMARIZE["Summarize Old Turns\n(LLM call, cached by hash)"]
-    KEEP["Keep As-Is"]
-    CACHE{"System prompt\n≥ 1024 tok?"}
-    INJECT["Inject cache_control\n/ cachePoint"]
-    NOCACHE["No Cache Markers"]
-    ADAPTIVE["Adaptive max_tokens\n(by task + difficulty)"]
-    OUT["Optimized Request → API"]
-
-    IN --> COMP
-    COMP -->|"yes"| SKIP
-    COMP -->|"no"| COMPRESS
-    SKIP --> TRIM
+    IN[Raw Messages + System Prompt] --> COMP{Code detected?}
+    COMP -->|yes| SKIP[Skip Compression]
+    COMP -->|no| COMPRESS[Compress Prompt]
+    SKIP --> TRIM{Context > 6000 tok?}
     COMPRESS --> TRIM
-    TRIM -->|"yes"| SUMMARIZE
-    TRIM -->|"no"| KEEP
-    SUMMARIZE --> CACHE
+    TRIM -->|yes| SUMMARIZE[Summarize Old Turns]
+    TRIM -->|no| KEEP[Keep As-Is]
+    SUMMARIZE --> CACHE{System prompt >= 1024 tok?}
     KEEP --> CACHE
-    CACHE -->|"yes"| INJECT
-    CACHE -->|"no"| NOCACHE
-    INJECT --> ADAPTIVE
+    CACHE -->|yes| INJECT[Inject Cache Control]
+    CACHE -->|no| NOCACHE[No Cache Markers]
+    INJECT --> ADAPTIVE[Adaptive max_tokens]
     NOCACHE --> ADAPTIVE
-    ADAPTIVE --> OUT
-
-    style COMP fill:#ffd,stroke:#333
-    style TRIM fill:#ffd,stroke:#333
-    style CACHE fill:#ffd,stroke:#333
-    style COMPRESS fill:#dfd,stroke:#333
-    style SUMMARIZE fill:#dfd,stroke:#333
-    style INJECT fill:#dfd,stroke:#333
-    style ADAPTIVE fill:#dfd,stroke:#333
+    ADAPTIVE --> OUT[Optimized Request]
 ```
 
 ---
