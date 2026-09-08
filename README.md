@@ -115,7 +115,33 @@ python benchmark_runner.py \
     --output results.json --verbose
 ```
 
-### 4. Read the Output
+### 4. Use Your Own Benchmark
+
+You can test with your own prompts — just create a JSON file matching this format:
+
+```json
+[
+  {
+    "id": "my_01",
+    "task": "code_generation",
+    "category": "general",
+    "difficulty": "medium",
+    "prompt": "Your prompt here"
+  }
+]
+```
+
+- **`task`**: one of `explanation`, `code_generation`, `debugging`, `code_review` (drives adaptive `max_tokens`)
+- **`difficulty`**: `easy`, `medium`, or `hard` (lower difficulty = lower token budget)
+- **`id`**: unique string per prompt (used in reports)
+- **`category`**: freeform label (used in logs, not in logic)
+
+Then run:
+```bash
+python benchmark_runner.py --benchmark my_benchmark.json --output results.json --baseline
+```
+
+### 5. Read the Output
 
 **Console output** — two tables are printed after the run:
 
