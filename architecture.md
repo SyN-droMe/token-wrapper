@@ -10,14 +10,65 @@ response, and exposes summary reports.
 ```mermaid
 flowchart LR
     APP["Application Code"]
-    PIPE["ReductionPipeline\n─────────────────\n① Compress\n② Trim + Summarize\n③ Inject Cache Control"]
-    API["LLM API"]
-    LOG["UsageLogger\n+ Reporter"]
+    PROXY["_MessagesProxy\n(interceptor)"]
+    CACHE_CHECK{{"Local\nResponse\nCache?"}}
+    PIPE["ReductionPipeline"]
+    API["LLM API\n(Anthropic / Bedrock)"]
+    LOG["UsageLogger"]
+    RPT["UsageReporter"]
 
-    APP -->|"messages.create(...)"| PIPE
+    APP -->|"messages.create(...)"| PROXY
+    PROXY --> CACHE_CHECK
+    CACHE_CHECK -->|"hit"| APP
+    CACHE_CHECK -->|"miss"| PIPE
     PIPE -->|"optimized request"| API
     API -->|"response + usage"| LOG
+    LOG --> RPT
     LOG -->|"response"| APP
+
+    style CACHE_CHECK fill:#f9f,stroke:#333
+    style PIPE fill:#bbf,stroke:#333
+```
+
+### Reduction Pipeline Detail
+
+```mermaid
+flowchart TD
+    IN["Raw Messages + System Prompt"]
+    COMP{"Code\ndetected?"}
+    COMPRESS["Prompt Compression\n(whitespace + verbose phrases)"]
+    SKIP["Skip Compression"]
+    TRIM{"Context\n> 6000 tok?"}
+    SUMMARIZE["Summarize Old Turns\n(LLM call, cached by hash)"]
+    KEEP["Keep As-Is"]
+    CACHE{"System prompt\n≥ 1024 tok?"}
+    INJECT["Inject cache_control\n/ cachePoint"]
+    NOCACHE["No Cache Markers"]
+    ADAPTIVE["Adaptive max_tokens\n(by task + difficulty)"]
+    OUT["Optimized Request → API"]
+
+    IN --> COMP
+    COMP -->|"yes"| SKIP
+    COMP -->|"no"| COMPRESS
+    SKIP --> TRIM
+    COMPRESS --> TRIM
+    TRIM -->|"yes"| SUMMARIZE
+    TRIM -->|"no"| KEEP
+    SUMMARIZE --> CACHE
+    KEEP --> CACHE
+    CACHE -->|"yes"| INJECT
+    CACHE -->|"no"| NOCACHE
+    INJECT --> ADAPTIVE
+    NOCACHE --> ADAPTIVE
+    ADAPTIVE --> OUT
+
+    style COMP fill:#ffd,stroke:#333
+    style TRIM fill:#ffd,stroke:#333
+    style CACHE fill:#ffd,stroke:#333
+    style COMPRESS fill:#dfd,stroke:#333
+    style SUMMARIZE fill:#dfd,stroke:#333
+    style INJECT fill:#dfd,stroke:#333
+    style ADAPTIVE fill:#dfd,stroke:#333
 ```
 
 ---
@@ -208,27 +259,33 @@ token_wrapper/
 
 ## Data Flow for a Single Call
 
-```
-messages.create(model, messages, system, max_tokens, ...)
-    │
-    ├─ 1. Estimate pre-reduction token count (heuristic: chars/3.8)
-    ├─ 2. Register CallRecord in UsageLogger  [lock acquired/released]
-    │
-    ├─ ReductionPipeline.process(messages, system, model)
-    │       ├─ compress_messages(messages)
-    │       ├─ _trim_context(messages, model)   [if over threshold]
-    │       │       └─ _summarize(old_text)
-    │       │               ├─ [cache hit]  return cached summary instantly
-    │       │               └─ [cache miss] call summarizer → store in _summary_cache
-    │       └─ _inject_cache_control(system, messages)
-    │
-    ├─ Forward cleaned request to anthropic.Anthropic().messages.create()
-    │
-    ├─ Extract response.usage (input_tokens, output_tokens,
-    │                         cache_creation_input_tokens, cache_read_input_tokens)
-    ├─ Update CallRecord with actuals + compute cost estimate  [lock acquired/released]
-    │
-    └─ Return response unmodified to caller
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Proxy as _MessagesProxy
+    participant Logger as UsageLogger
+    participant Pipeline as ReductionPipeline
+    participant API as LLM API
+
+    App->>Proxy: messages.create(model, messages, system, ...)
+    Proxy->>Proxy: Estimate pre-reduction tokens (chars/3.8)
+    Proxy->>Logger: new_record(model, pre_tokens)
+
+    alt Response cache hit
+        Proxy-->>App: Return cached response (0 tokens, $0)
+    else Cache miss
+        Proxy->>Pipeline: process(messages, system, model)
+        Pipeline->>Pipeline: compress_messages()
+        Pipeline->>Pipeline: _trim_context() [if > 6000 tok]
+        Pipeline->>Pipeline: _inject_cache_control()
+        Pipeline-->>Proxy: (processed_msgs, processed_sys, strategies)
+
+        Proxy->>API: Forward optimized request
+        API-->>Proxy: response + usage
+
+        Proxy->>Logger: Update CallRecord (tokens, cost)
+        Proxy-->>App: Return response
+    end
 ```
 
 When running the benchmark, all prompts are dispatched concurrently via

@@ -77,31 +77,6 @@ bash run.sh --benchmark benchmark_sample.json --output results.json
 bash run.sh --verbose
 ```
 
-#### Windows (Command Prompt)
-
-```cmd
-REM Set API key
-set ANTHROPIC_API_KEY=sk-ant-...
-
-REM Or for Bedrock
-set AWS_BEARER_TOKEN_BEDROCK=<your-bearer-token>
-
-REM Install dependencies
-pip install -r requirements.txt
-
-REM Basic run
-python benchmark_runner.py --benchmark benchmark_sample.json --output results.json
-
-REM Bedrock
-python benchmark_runner.py --bedrock --model claude-sonnet-4 --benchmark benchmark_sample.json --output results.json
-
-REM With baseline comparison
-python benchmark_runner.py --benchmark benchmark_sample.json --output results.json --baseline
-
-REM Verbose output
-python benchmark_runner.py --benchmark benchmark_sample.json --output results.json --verbose
-```
-
 #### Windows (PowerShell)
 
 ```powershell
